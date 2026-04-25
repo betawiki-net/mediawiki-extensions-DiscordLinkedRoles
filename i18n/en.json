@@ -1,0 +1,24 @@
+{
+	"@metadata": {
+		"authors": []
+	},
+	"discordlinkedroles-extensionname": "Discord Linked Roles",
+	"discordlinkedroles-extensiondesc": "Provides Discord linked role connectivity",
+	"discordlinkedroles-specialpage-title": "Discord Linked Roles",
+	"discordlinkedroles-not-configured": "The Discord Linked Roles extension is not configured. Please contact the wiki administrator.",
+	"discordlinkedroles-status-connected": "Your wiki account is connected to Discord as '''$1'''.",
+	"discordlinkedroles-status-disconnected": "Your wiki account is not connected to Discord.",
+	"discordlinkedroles-connect": "Connect to Discord",
+	"discordlinkedroles-disconnect": "Disconnect from Discord",
+	"discordlinkedroles-resync": "Resync now",
+	"discordlinkedroles-error-generic": "An error occurred communicating with Discord. Please try again later.",
+	"discordlinkedroles-error-state-mismatch": "The authorization request could not be verified. Please try connecting again.",
+	"discordlinkedroles-error-discord-already-linked": "This Discord account is already linked to another wiki account.",
+	"discordlinkedroles-error-wiki-already-linked": "Your wiki account is already linked to a Discord account. Please disconnect first.",
+	"discordlinkedroles-connect-success": "Your wiki account has been connected to Discord as '''$1'''.",
+	"discordlinkedroles-disconnect-success": "Your wiki account has been disconnected from Discord.",
+	"discordlinkedroles-last-sync-at": "Last successful sync: $1",
+	"discordlinkedroles-last-sync-error": "Last sync error: $1",
+	"discordlinkedroles-sync-success": "Metadata successfully synced to Discord.",
+	"discordlinkedroles-group-default-desc": "Member of the \"$1\" group."
+}

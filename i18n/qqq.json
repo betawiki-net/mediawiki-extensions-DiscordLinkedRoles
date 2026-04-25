@@ -1,0 +1,24 @@
+{
+	"@metadata": {
+		"authors": []
+	},
+	"discordlinkedroles-extensionname": "{{Optional}} {{Identical|Discord Linked Roles}}",
+	"discordlinkedroles-extensiondesc": "{{desc}}",
+	"discordlinkedroles-specialpage-title": "Title of Special:DiscordLinkedRoles.",
+	"discordlinkedroles-not-configured": "Shown when the extension is loaded but not configured.",
+	"discordlinkedroles-status-connected": "Status message when the user is connected. $1 is the Discord username.",
+	"discordlinkedroles-status-disconnected": "Status message when the user is not connected.",
+	"discordlinkedroles-connect": "Button label to start the Discord OAuth flow.",
+	"discordlinkedroles-disconnect": "Button label to disconnect the Discord account.",
+	"discordlinkedroles-resync": "Button label to manually trigger a metadata resync.",
+	"discordlinkedroles-error-generic": "Generic error message for Discord API failures.",
+	"discordlinkedroles-error-state-mismatch": "Error message when the OAuth state parameter does not match.",
+	"discordlinkedroles-error-discord-already-linked": "Error when the Discord account is already linked to a different wiki account.",
+	"discordlinkedroles-error-wiki-already-linked": "Error when the wiki account already has a linked Discord account.",
+	"discordlinkedroles-connect-success": "Success message after connecting. $1 is the Discord username.",
+	"discordlinkedroles-disconnect-success": "Success message after disconnecting.",
+	"discordlinkedroles-last-sync-at": "Shows when the last successful sync occurred. $1 is the timestamp.",
+	"discordlinkedroles-last-sync-error": "Shows the last sync error message. $1 is the error text.",
+	"discordlinkedroles-sync-success": "Success message after a manual resync.",
+	"discordlinkedroles-group-default-desc": "Default Discord metadata field description used when no group-specific message is defined. $1 is the wiki group name."
+}

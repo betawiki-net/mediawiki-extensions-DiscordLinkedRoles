@@ -1,0 +1,107 @@
+{
+	"manifest_version": 2,
+	"name": "DiscordLinkedRoles",
+	"namemsg": "discordlinkedroles-extensionname",
+	"descriptionmsg": "discordlinkedroles-extensiondesc",
+	"author": [],
+	"license-name": "MIT",
+	"type": "specialpage",
+	"requires": {
+		"MediaWiki": ">= 1.43.0",
+		"platform": {
+			"php": ">= 8.1"
+		}
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\DiscordLinkedRoles\\": "includes/",
+		"MediaWiki\\Extension\\DiscordLinkedRoles\\Maintenance\\": "maintenance/"
+	},
+	"config": {
+		"DiscordLinkedRolesClientId": {
+			"value": "",
+			"description": "Discord OAuth2 client ID (also used as the application ID in Discord API paths)."
+		},
+		"DiscordLinkedRolesClientSecret": {
+			"value": "",
+			"description": "Discord OAuth2 client secret for token exchange and revocation."
+		},
+		"DiscordLinkedRolesBotToken": {
+			"value": "",
+			"description": "Discord bot token used as the application-management credential to update role connection metadata definitions."
+		},
+		"DiscordLinkedRolesReportedGroups": {
+			"value": [],
+			"description": "Ordered list of up to 5 wiki group names whose membership will be reported to Discord as boolean metadata fields.",
+			"merge_strategy": "provide_default"
+		},
+		"DiscordLinkedRolesEncryptionKey": {
+			"value": "",
+			"description": "Base64-encoded 32-byte symmetric key used to encrypt refresh tokens at rest. Generate with: openssl rand -base64 32"
+		}
+	},
+	"SpecialPages": {
+		"DiscordLinkedRoles": {
+			"class": "MediaWiki\\Extension\\DiscordLinkedRoles\\Special\\SpecialDiscordLinkedRoles",
+			"services": [
+				"DiscordLinkedRoles.LinkedAccountStore",
+				"DiscordLinkedRoles.RefreshTokenEncryptor",
+				"DiscordLinkedRoles.DiscordOAuthClient",
+				"DiscordLinkedRoles.DiscordRoleConnectionClient",
+				"DiscordLinkedRoles.RoleConnectionSyncService"
+			]
+		}
+	},
+	"HookHandlers": {
+		"main": {
+			"class": "MediaWiki\\Extension\\DiscordLinkedRoles\\HookHandlers",
+			"services": [
+				"DiscordLinkedRoles.LinkedAccountStore",
+				"JobQueueGroup",
+				"MainConfig"
+			]
+		},
+		"schema": {
+			"class": "MediaWiki\\Extension\\DiscordLinkedRoles\\SchemaHooks"
+		}
+	},
+	"Hooks": {
+		"LoadExtensionSchemaUpdates": "schema",
+		"UserGroupsChanged": "main"
+	},
+	"JobClasses": {
+		"discordLinkedRolesSyncUser": {
+			"class": "MediaWiki\\Extension\\DiscordLinkedRoles\\Job\\SyncDiscordLinkedRolesJob",
+			"needsPage": false
+		}
+	},
+	"ServiceWiringFiles": [
+		"includes/ServiceWiring.php"
+	],
+	"ResourceModules": {
+		"ext.discordLinkedRoles.special": {
+			"class": "MediaWiki\\ResourceLoader\\CodexModule",
+			"codexComponents": [
+				"CdxButton",
+				"CdxMessage"
+			],
+			"styles": [
+				"resources/special/ext.discordLinkedRoles.special.less"
+			],
+			"scripts": [
+				"resources/special/ext.discordLinkedRoles.special.js"
+			],
+			"messages": [
+				"discordlinkedroles-connect",
+				"discordlinkedroles-disconnect",
+				"discordlinkedroles-status-connected",
+				"discordlinkedroles-status-disconnected"
+			]
+		}
+	},
+	"MessagesDirs": {
+		"DiscordLinkedRoles": [
+			"i18n"
+		]
+	},
+	"load_composer_autoloader": false
+}

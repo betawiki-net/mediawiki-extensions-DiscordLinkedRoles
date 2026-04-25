@@ -1,0 +1,73 @@
+[
+	{
+		"name": "discord_linked_roles_account",
+		"comment": "Stores Discord OAuth2 links between wiki user accounts and Discord user accounts for the DiscordLinkedRoles extension.",
+		"columns": [
+			{
+				"name": "dlra_id",
+				"comment": "Auto-increment primary key.",
+				"type": "integer",
+				"options": { "unsigned": true, "notnull": true, "autoincrement": true }
+			},
+			{
+				"name": "dlra_user_id",
+				"comment": "Local wiki user ID (references user.user_id). Unique per wiki account.",
+				"type": "integer",
+				"options": { "unsigned": true, "notnull": true }
+			},
+			{
+				"name": "dlra_discord_user_id",
+				"comment": "Discord user snowflake ID as a string. Unique per Discord account.",
+				"type": "string",
+				"options": { "length": 32, "notnull": true }
+			},
+			{
+				"name": "dlra_discord_username",
+				"comment": "Last known Discord username or display name, used in the status UI.",
+				"type": "string",
+				"options": { "length": 255, "notnull": true, "default": "" }
+			},
+			{
+				"name": "dlra_refresh_token",
+				"comment": "Encrypted refresh token ciphertext (AES-256-GCM, base64-encoded).",
+				"type": "blob",
+				"options": { "length": 65530, "notnull": true }
+			},
+			{
+				"name": "dlra_scopes",
+				"comment": "Granted OAuth scope string for diagnostics.",
+				"type": "string",
+				"options": { "length": 255, "notnull": true, "default": "" }
+			},
+			{
+				"name": "dlra_connected_at",
+				"comment": "Unix timestamp when the link was first created.",
+				"type": "mwtimestamp",
+				"options": { "notnull": true }
+			},
+			{
+				"name": "dlra_updated_at",
+				"comment": "Unix timestamp when the row or token was last updated.",
+				"type": "mwtimestamp",
+				"options": { "notnull": true }
+			},
+			{
+				"name": "dlra_last_sync_at",
+				"comment": "Unix timestamp of the last successful metadata sync. NULL if never synced.",
+				"type": "mwtimestamp",
+				"options": { "notnull": false, "default": null }
+			},
+			{
+				"name": "dlra_last_sync_error",
+				"comment": "Short error summary from the last failed sync, or NULL if last sync succeeded.",
+				"type": "string",
+				"options": { "length": 512, "notnull": false, "default": null }
+			}
+		],
+		"indexes": [
+			{ "name": "dlra_user_id", "columns": [ "dlra_user_id" ], "unique": true },
+			{ "name": "dlra_discord_user_id", "columns": [ "dlra_discord_user_id" ], "unique": true }
+		],
+		"pk": [ "dlra_id" ]
+	}
+]
