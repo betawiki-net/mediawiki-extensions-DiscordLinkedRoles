@@ -20,5 +20,5 @@
 	"discordlinkedroles-last-sync-at": "Last successful sync: $1",
 	"discordlinkedroles-last-sync-error": "Last sync error: $1",
 	"discordlinkedroles-sync-success": "Metadata successfully synced to Discord.",
-	"discordlinkedroles-group-default-desc": "Member of the \"$1\" group."
+	"discordlinkedroles-group-default-desc": "Member of the $1 group."
 }

@@ -45,10 +45,10 @@ class MetadataDefinitionBuilder {
 	 * Build the array of metadata definitions to send to the Discord API.
 	 *
 	 * Name and description are resolved from MediaWiki i18n messages so
-	 * administrators can override them in the MediaWiki: namespace.  The
-	 * message keys follow the pattern:
-	 *   - discordlinkedroles-group-{key}-name  (falls back to the raw group name)
-	 *   - discordlinkedroles-group-{key}-desc  (falls back to a generic message)
+	 * administrators can override them in the MediaWiki: namespace. The
+	 * metadata name comes from the core group message `group-{group}` and
+	 * the description key follows the pattern:
+	 *   - discordlinkedroles-group-{key}-desc (falls back to a generic message)
 	 *
 	 * @return array[] Array of Discord metadata definition records.
 	 */
@@ -56,17 +56,17 @@ class MetadataDefinitionBuilder {
 		$definitions = [];
 		foreach ( $this->groups as $group ) {
 			$key     = self::groupToKey( $group );
-			$nameMsg = wfMessage( 'discordlinkedroles-group-' . $key . '-name' );
+			$nameMsg = wfMessage( 'group-' . $group );
 			$descMsg = wfMessage( 'discordlinkedroles-group-' . $key . '-desc' );
+
+			$name = $nameMsg->exists() ? $nameMsg->plain() : $group;
 
 			$definitions[] = [
 				'key'         => $key,
-				'name'        => $nameMsg->exists()
-					? $nameMsg->plain()
-					: $group,
+				'name'        => $name,
 				'description' => $descMsg->exists()
 					? $descMsg->plain()
-					: wfMessage( 'discordlinkedroles-group-default-desc', $group )->plain(),
+					: wfMessage( 'discordlinkedroles-group-default-desc', $name )->plain(),
 				'type'        => self::BOOLEAN_EQUAL,
 			];
 		}
