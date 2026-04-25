@@ -16,7 +16,7 @@ A MediaWiki extension that lets users link their wiki account to their Discord a
    wfLoadExtension( 'DiscordLinkedRoles' );
    ```
 3. Run database updates:
-   ```
+   ```bash
    php maintenance/update.php
    ```
 4. Configure the extension (see [Configuration](#configuration)).
@@ -45,7 +45,7 @@ openssl rand -base64 32
 ```php
 $wgDiscordLinkedRolesClientId     = '123456789012345678';
 $wgDiscordLinkedRolesClientSecret = 'your-client-secret';
-$wgDiscordLinkedRolesBotToken     = 'Bot your-bot-token';
+$wgDiscordLinkedRolesBotToken     = 'your-bot-token';
 $wgDiscordLinkedRolesEncryptionKey = 'base64-encoded-32-byte-key=';
 $wgDiscordLinkedRolesReportedGroups = [ 'sysop', 'bureaucrat', 'confirmed' ];
 ```
@@ -65,7 +65,7 @@ $wgDiscordLinkedRolesReportedGroups = [ 'sysop', 'bureaucrat', 'confirmed' ];
 After configuring the extension, push the metadata definitions to Discord so it knows which wiki groups the application can report. This must be re-run any time `$wgDiscordLinkedRolesReportedGroups` changes.
 
 ```bash
-php extensions/DiscordLinkedRoles/maintenance/SyncDiscordRoleMetadata.php
+maintenance/run DiscordLinkedRoles:syncDiscordRoleMetadata
 ```
 
 ## Usage

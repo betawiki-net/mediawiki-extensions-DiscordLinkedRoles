@@ -3,7 +3,8 @@
 	"name": "DiscordLinkedRoles",
 	"namemsg": "discordlinkedroles-extensionname",
 	"descriptionmsg": "discordlinkedroles-extensiondesc",
-	"author": [],
+	"version": "0.1.0",
+	"author": ["David Hrdlička"],
 	"license-name": "MIT",
 	"type": "specialpage",
 	"requires": {
