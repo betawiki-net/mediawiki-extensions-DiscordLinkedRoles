@@ -77,12 +77,14 @@
 	"ServiceWiringFiles": [
 		"includes/ServiceWiring.php"
 	],
+	"ResourceFileModulePaths": {
+		"localBasePath": "",
+		"remoteExtPath": "DiscordLinkedRoles"
+	},
 	"ResourceModules": {
 		"ext.discordLinkedRoles.special": {
-			"class": "MediaWiki\\ResourceLoader\\CodexModule",
-			"codexComponents": [
-				"CdxButton",
-				"CdxMessage"
+			"dependencies": [
+				"codex-styles"
 			],
 			"styles": [
 				"resources/special/ext.discordLinkedRoles.special.less"

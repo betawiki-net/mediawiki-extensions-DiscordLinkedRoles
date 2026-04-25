@@ -8,7 +8,7 @@ use MediaWiki\Extension\DiscordLinkedRoles\Discord\DiscordRoleConnectionClient;
 use MediaWiki\Extension\DiscordLinkedRoles\Store\LinkedAccountRecord;
 use MediaWiki\Extension\DiscordLinkedRoles\Store\LinkedAccountStore;
 use MediaWiki\Extension\DiscordLinkedRoles\Sync\RoleConnectionSyncService;
-use MediaWiki\Html\Html;
+use MediaWiki\Html\TemplateParser;
 use MediaWiki\Logger\LoggerFactory;
 use MediaWiki\SpecialPage\SpecialPage;
 use MediaWiki\Utils\MWTimestamp;
@@ -27,6 +27,8 @@ use RuntimeException;
 class SpecialDiscordLinkedRoles extends SpecialPage {
 
 	private LoggerInterface $logger;
+	private TemplateParser $templateParser;
+	private array $pendingMessages = [];
 
 	public function __construct(
 		private readonly LinkedAccountStore $linkedAccountStore,
@@ -37,6 +39,7 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 	) {
 		parent::__construct( 'DiscordLinkedRoles', '', /* $listed */ true );
 		$this->logger = LoggerFactory::getInstance( 'DiscordLinkedRoles' );
+		$this->templateParser = new TemplateParser( dirname( __DIR__, 2 ) . '/templates' );
 	}
 
 	/** @inheritDoc */
@@ -53,11 +56,11 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 
 		$config = $this->getConfig();
 		if ( !$config->get( 'DiscordLinkedRolesClientId' ) ) {
-			$out->addHTML(
-				Html::element( 'div', [ 'class' => 'ext-discordlinkedroles-not-configured' ],
-					$this->msg( 'discordlinkedroles-not-configured' )->text()
-				)
-			);
+			$out->addHTML( $this->renderTemplate( [
+				'notConfigured' => true,
+				'widgetTitle' => $this->msg( 'discordlinkedroles-specialpage-title' )->text(),
+				'notConfiguredText' => $this->msg( 'discordlinkedroles-not-configured' )->text(),
+			] ) );
 			return;
 		}
 
@@ -102,9 +105,7 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 		$user = $this->getUser();
 
 		if ( $this->linkedAccountStore->getByUserId( $user->getId() ) !== null ) {
-			$this->getOutput()->addHTML(
-				$this->buildMessageHtml( 'error', 'discordlinkedroles-error-wiki-already-linked' )
-			);
+			$this->addMessage( 'error', 'discordlinkedroles-error-wiki-already-linked' );
 			$this->showStatus();
 			return;
 		}
@@ -131,7 +132,6 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 	 * Validates state, exchanges code, enforces 1:1 mapping, and persists the link.
 	 */
 	private function handleCallback(): void {
-		$out     = $this->getOutput();
 		$request = $this->getRequest();
 		$user    = $this->getUser();
 
@@ -147,7 +147,7 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 			$this->logger->warning( 'Discord OAuth callback: state mismatch', [
 				'user' => $user->getName(),
 			] );
-			$out->addHTML( $this->buildMessageHtml( 'error', 'discordlinkedroles-error-state-mismatch' ) );
+			$this->addMessage( 'error', 'discordlinkedroles-error-state-mismatch' );
 			$this->showStatus();
 			return;
 		}
@@ -162,7 +162,7 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 			// Enforce 1:1: Discord account must not be linked to another wiki user
 			if ( $this->linkedAccountStore->getByDiscordUserId( $discordUserId ) !== null ) {
 				$this->oauthClient->revokeToken( $tokenResponse->getRefreshToken() );
-				$out->addHTML( $this->buildMessageHtml( 'error', 'discordlinkedroles-error-discord-already-linked' ) );
+				$this->addMessage( 'error', 'discordlinkedroles-error-discord-already-linked' );
 				$this->showStatus();
 				return;
 			}
@@ -170,7 +170,7 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 			// Enforce 1:1: wiki user must not already have a linked Discord account
 			if ( $this->linkedAccountStore->getByUserId( $user->getId() ) !== null ) {
 				$this->oauthClient->revokeToken( $tokenResponse->getRefreshToken() );
-				$out->addHTML( $this->buildMessageHtml( 'error', 'discordlinkedroles-error-wiki-already-linked' ) );
+				$this->addMessage( 'error', 'discordlinkedroles-error-wiki-already-linked' );
 				$this->showStatus();
 				return;
 			}
@@ -198,16 +198,14 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 				'discordUsername' => $discordUsername,
 			] );
 
-			$out->addHTML(
-				$this->buildMessageHtml( 'success', 'discordlinkedroles-connect-success', $discordUsername )
-			);
+			$this->addMessage( 'success', 'discordlinkedroles-connect-success', $discordUsername );
 
 		} catch ( RuntimeException $e ) {
 			$this->logger->error( 'Discord OAuth callback failed', [
 				'user'      => $user->getName(),
 				'exception' => $e->getMessage(),
 			] );
-			$out->addHTML( $this->buildMessageHtml( 'error', 'discordlinkedroles-error-generic' ) );
+			$this->addMessage( 'error', 'discordlinkedroles-error-generic' );
 		}
 
 		$this->showStatus();
@@ -218,12 +216,11 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 	 * Recomputes current group metadata and pushes it to Discord.
 	 */
 	private function handleResync(): void {
-		$out     = $this->getOutput();
 		$user    = $this->getUser();
 		$request = $this->getRequest();
 
 		if ( !$user->matchEditToken( $request->getVal( 'wpEditToken', '' ) ) ) {
-			$out->addHTML( $this->buildMessageHtml( 'error', 'discordlinkedroles-error-generic' ) );
+			$this->addMessage( 'error', 'discordlinkedroles-error-generic' );
 			$this->showStatus();
 			return;
 		}
@@ -238,9 +235,9 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 		// Re-read the record to reflect the updated sync result.
 		$record = $this->linkedAccountStore->getByUserId( $user->getId() );
 		if ( $record !== null && $record->getLastSyncError() === null ) {
-			$out->addHTML( $this->buildMessageHtml( 'success', 'discordlinkedroles-sync-success' ) );
+			$this->addMessage( 'success', 'discordlinkedroles-sync-success' );
 		} else {
-			$out->addHTML( $this->buildMessageHtml( 'error', 'discordlinkedroles-error-generic' ) );
+			$this->addMessage( 'error', 'discordlinkedroles-error-generic' );
 		}
 
 		$this->showStatus();
@@ -251,12 +248,11 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 	 * Clears the remote role connection, revokes the authorization, and deletes the local row.
 	 */
 	private function handleDisconnect(): void {
-		$out     = $this->getOutput();
 		$user    = $this->getUser();
 		$request = $this->getRequest();
 
 		if ( !$user->matchEditToken( $request->getVal( 'wpEditToken', '' ) ) ) {
-			$out->addHTML( $this->buildMessageHtml( 'error', 'discordlinkedroles-error-generic' ) );
+			$this->addMessage( 'error', 'discordlinkedroles-error-generic' );
 			$this->showStatus();
 			return;
 		}
@@ -289,7 +285,7 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 
 		$this->logger->info( 'Discord account unlinked', [ 'user' => $user->getName() ] );
 
-		$out->addHTML( $this->buildMessageHtml( 'success', 'discordlinkedroles-disconnect-success' ) );
+		$this->addMessage( 'success', 'discordlinkedroles-disconnect-success' );
 		$this->showStatus();
 	}
 
@@ -305,84 +301,74 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 		$user = $this->getUser();
 
 		$record = $this->linkedAccountStore->getByUserId( $user->getId() );
+		$templateData = [
+			'messages' => $this->pendingMessages,
+			'notConfigured' => false,
+			'widgetTitle' => $this->msg( 'discordlinkedroles-specialpage-title' )->text(),
+		];
+
+		$this->pendingMessages = [];
 
 		if ( $record === null ) {
-			$connectUrl = $this->getPageTitle()->getLocalURL( [ 'action' => 'connect' ] );
-			$out->addHTML(
-				Html::element( 'div',
-					[ 'class' => 'ext-discordlinkedroles-status ext-discordlinkedroles-disconnected' ],
-					$this->msg( 'discordlinkedroles-status-disconnected' )->text()
-				) .
-				Html::rawElement( 'div', [ 'class' => 'ext-discordlinkedroles-actions' ],
-					Html::element( 'a',
-						[
-							'href'  => $connectUrl,
-							'class' => 'cdx-button cdx-button--action-progressive',
-						],
-						$this->msg( 'discordlinkedroles-connect' )->text()
-					)
-				)
-			);
+			$templateData += [
+				'isDisconnected' => true,
+				'statusHtml' => $this->msg( 'discordlinkedroles-status-disconnected' )->escaped(),
+				'connectFormAction' => $this->getPageTitle()->getLocalURL(),
+				'connectLabel' => $this->msg( 'discordlinkedroles-connect' )->text(),
+			];
 		} else {
-			$out->addHTML(
-				Html::rawElement( 'div',
-					[ 'class' => 'ext-discordlinkedroles-status ext-discordlinkedroles-connected' ],
-					$this->msg( 'discordlinkedroles-status-connected', $record->getDiscordUsername() )->parse()
-				)
-			);
-
-			if ( $record->getLastSyncError() !== null ) {
-				$out->addHTML(
-					Html::element( 'div', [ 'class' => 'ext-discordlinkedroles-sync-error' ],
-						$this->msg( 'discordlinkedroles-last-sync-error', $record->getLastSyncError() )->text()
-					)
-				);
-			} elseif ( $record->getLastSyncAt() !== null ) {
-				$out->addHTML(
-					Html::element( 'div', [ 'class' => 'ext-discordlinkedroles-sync-info' ],
-						$this->msg( 'discordlinkedroles-last-sync-at', $record->getLastSyncAt() )->text()
-					)
-				);
-			}
-
 			$pageUrl = $this->getPageTitle()->getLocalURL();
-			$out->addHTML(
-				Html::openElement( 'div', [ 'class' => 'ext-discordlinkedroles-actions' ] ) .
-				Html::openElement( 'form', [ 'method' => 'post', 'action' => $pageUrl ] ) .
-				Html::hidden( 'wpAction', 'resync' ) .
-				Html::hidden( 'wpEditToken', $user->getEditToken() ) .
-				Html::element( 'button',
-					[ 'type' => 'submit', 'class' => 'cdx-button cdx-button--action-progressive' ],
-					$this->msg( 'discordlinkedroles-resync' )->text()
-				) .
-				Html::closeElement( 'form' ) .
-				Html::openElement( 'form', [ 'method' => 'post', 'action' => $pageUrl ] ) .
-				Html::hidden( 'wpAction', 'disconnect' ) .
-				Html::hidden( 'wpEditToken', $user->getEditToken() ) .
-				Html::element( 'button',
-					[ 'type' => 'submit', 'class' => 'cdx-button cdx-button--action-destructive' ],
-					$this->msg( 'discordlinkedroles-disconnect' )->text()
-				) .
-				Html::closeElement( 'form' ) .
-				Html::closeElement( 'div' )
-			);
+			$lastSyncError = $record->getLastSyncError();
+			$lastSyncAt = $record->getLastSyncAt();
+			$lastSyncAtFormatted = $lastSyncAt !== null
+				? $this->getLanguage()->userTimeAndDate( $lastSyncAt, $user )
+				: null;
+			$templateData += [
+				'isConnected' => true,
+				'statusHtml' => $this->msg( 'discordlinkedroles-status-connected', $record->getDiscordUsername() )->parse(),
+				'pageUrl' => $pageUrl,
+				'csrfToken' => $user->getEditToken(),
+				'resyncLabel' => $this->msg( 'discordlinkedroles-resync' )->text(),
+				'disconnectLabel' => $this->msg( 'discordlinkedroles-disconnect' )->text(),
+				'hasSyncError' => $lastSyncError !== null,
+				'syncErrorText' => $lastSyncError !== null
+					? $this->msg( 'discordlinkedroles-last-sync-error', $lastSyncError )->text()
+					: '',
+				'hasSyncInfo' => $lastSyncError === null && $lastSyncAt !== null,
+				'syncInfoText' => $lastSyncAtFormatted !== null
+					? $this->msg( 'discordlinkedroles-last-sync-at', $lastSyncAtFormatted )->text()
+					: '',
+			];
 		}
+
+		$out->addHTML( $this->renderTemplate( $templateData ) );
 	}
 
 	/**
-	 * Build an inline success or error message element.
+	 * Queue a status message for rendering.
 	 *
 	 * @param string $type    'success' or 'error'
 	 * @param string $msgKey  i18n message key
 	 * @param mixed  ...$params
 	 */
-	private function buildMessageHtml( string $type, string $msgKey, ...$params ): string {
+	private function addMessage( string $type, string $msgKey, ...$params ): void {
 		$class = $type === 'success'
-			? 'ext-discordlinkedroles-msg-success'
-			: 'ext-discordlinkedroles-msg-error';
-		return Html::rawElement( 'div', [ 'class' => $class ],
-			$this->msg( $msgKey, ...$params )->parse()
-		);
+			? 'cdx-message cdx-message--block cdx-message--success'
+			: 'cdx-message cdx-message--block cdx-message--error';
+
+		$this->pendingMessages[] = [
+			'class' => $class,
+			'html' => $this->msg( $msgKey, ...$params )->parse(),
+		];
+	}
+
+	/**
+	 * Render the Mustache layout for the special page.
+	 *
+	 * @param array $templateData Data for the Mustache template.
+	 */
+	private function renderTemplate( array $templateData ): string {
+		return $this->templateParser->processTemplate( 'SpecialDiscordLinkedRoles', $templateData );
 	}
 
 	/**

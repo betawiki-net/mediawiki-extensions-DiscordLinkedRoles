@@ -1,0 +1,53 @@
+{{#messages}}
+<div class="{{class}}">
+	<span class="cdx-message__icon"></span>
+	<div class="cdx-message__content">{{{html}}}</div>
+</div>
+{{/messages}}
+
+{{#notConfigured}}
+<div class="ext-discordlinkedroles-widget cdx-card">
+	<div class="cdx-card__text">
+		<div class="cdx-card__text__title">{{widgetTitle}}</div>
+		<div class="cdx-card__text__description">
+			<div class="ext-discordlinkedroles-not-configured">{{notConfiguredText}}</div>
+		</div>
+	</div>
+</div>
+{{/notConfigured}}
+
+{{^notConfigured}}
+<div class="ext-discordlinkedroles-widget cdx-card">
+	<div class="cdx-card__text">
+		<div class="cdx-card__text__title">{{widgetTitle}}</div>
+		<div class="cdx-card__text__description">
+			<div class="ext-discordlinkedroles-status">{{{statusHtml}}}</div>
+
+			{{#hasSyncError}}
+			<div class="ext-discordlinkedroles-sync-error">{{syncErrorText}}</div>
+			{{/hasSyncError}}
+
+			{{#hasSyncInfo}}
+			<div class="ext-discordlinkedroles-sync-info">{{syncInfoText}}</div>
+			{{/hasSyncInfo}}
+
+			<div class="ext-discordlinkedroles-actions">
+				{{#isDisconnected}}
+				<form method="get" action="{{connectFormAction}}">
+					<input type="hidden" name="action" value="connect">
+					<button type="submit" class="cdx-button cdx-button--action-progressive cdx-button--weight-primary">{{connectLabel}}</button>
+				</form>
+				{{/isDisconnected}}
+
+				{{#isConnected}}
+				<form method="post" action="{{pageUrl}}">
+					<input type="hidden" name="wpEditToken" value="{{csrfToken}}">
+					<button type="submit" name="wpAction" value="resync" class="cdx-button cdx-button--action-progressive">{{resyncLabel}}</button>
+					<button type="submit" name="wpAction" value="disconnect" class="cdx-button cdx-button--action-destructive">{{disconnectLabel}}</button>
+				</form>
+				{{/isConnected}}
+			</div>
+		</div>
+	</div>
+</div>
+{{/notConfigured}}
