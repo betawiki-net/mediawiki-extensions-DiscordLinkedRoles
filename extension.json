@@ -103,5 +103,8 @@
 			"i18n"
 		]
 	},
+	"ExtensionMessagesFiles": {
+		"DiscordLinkedRolesAlias": "DiscordLinkedRoles.alias.php"
+	},
 	"load_composer_autoloader": false
 }
