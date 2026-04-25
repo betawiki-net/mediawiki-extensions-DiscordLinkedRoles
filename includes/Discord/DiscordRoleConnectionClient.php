@@ -74,14 +74,22 @@ class DiscordRoleConnectionClient {
 	 *
 	 * @param string $accessToken A valid access token with role_connections.write scope.
 	 * @param array  $metadata    Associative array of metadata key => string value.
+	 * @param string|null $platformUsername Optional wiki username shown in Discord.
 	 * @throws RuntimeException on HTTP or Discord error.
 	 */
-	public function putUserRoleConnection( string $accessToken, array $metadata ): void {
+	public function putUserRoleConnection(
+		string $accessToken,
+		array $metadata,
+		?string $platformUsername = null
+	): void {
 		$url     = self::BASE_URL . "/users/@me/applications/{$this->applicationId}/role-connection";
 		$payload = [
 			'platform_name' => $this->siteName,
 			'metadata'      => $metadata,
 		];
+		if ( $platformUsername !== null && $platformUsername !== '' ) {
+			$payload['platform_username'] = $platformUsername;
+		}
 		$body = json_encode( $payload );
 
 		$response = $this->putJson( $url, [ 'authorization' => 'Bearer ' . $accessToken ], $body );

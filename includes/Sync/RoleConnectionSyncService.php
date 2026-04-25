@@ -60,7 +60,11 @@ class RoleConnectionSyncService {
 			);
 
 			$metadata = $this->userMetadataBuilder->buildMetadata( $user );
-			$this->roleConnectionClient->putUserRoleConnection( $tokenResponse->getAccessToken(), $metadata );
+			$this->roleConnectionClient->putUserRoleConnection(
+				$tokenResponse->getAccessToken(),
+				$metadata,
+				$user->getName()
+			);
 
 			$this->linkedAccountStore->updateSyncResult( $userId, null );
 
