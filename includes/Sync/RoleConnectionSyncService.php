@@ -5,6 +5,8 @@ namespace MediaWiki\Extension\DiscordLinkedRoles\Sync;
 use MediaWiki\Extension\DiscordLinkedRoles\Crypto\RefreshTokenEncryptor;
 use MediaWiki\Extension\DiscordLinkedRoles\Discord\DiscordOAuthClient;
 use MediaWiki\Extension\DiscordLinkedRoles\Discord\DiscordRoleConnectionClient;
+use MediaWiki\Extension\DiscordLinkedRoles\Discord\DiscordTokenResponse;
+use MediaWiki\Extension\DiscordLinkedRoles\Store\LinkedAccountRecord;
 use MediaWiki\Extension\DiscordLinkedRoles\Store\LinkedAccountStore;
 use MediaWiki\User\UserIdentity;
 use Psr\Log\LoggerInterface;
@@ -49,15 +51,7 @@ class RoleConnectionSyncService {
 		}
 
 		try {
-			$refreshToken  = $this->encryptor->decrypt( $record->getEncryptedRefreshToken() );
-			$tokenResponse = $this->oauthClient->refreshToken( $refreshToken );
-
-			// Persist the possibly-rotated refresh token immediately.
-			$this->linkedAccountStore->updateToken(
-				$userId,
-				$this->encryptor->encrypt( $tokenResponse->getRefreshToken() ),
-				$record->getDiscordUsername()
-			);
+			$tokenResponse = $this->refreshAccessTokenAndPersist( $userId, $record );
 
 			$metadata = $this->userMetadataBuilder->buildMetadata( $user );
 			$this->roleConnectionClient->putUserRoleConnection(
@@ -81,5 +75,98 @@ class RoleConnectionSyncService {
 				'exception' => $error,
 			] );
 		}
+	}
+
+	/**
+	 * Clear the remote role-connection payload for a user.
+	 *
+	 * Used by account-deletion flows where we want Discord to stop showing
+	 * stale linked-role data instead of sending a final metadata snapshot.
+	 *
+	 * Always persists the outcome to the DB; never throws.
+	 */
+	public function clearUserRoleConnection( UserIdentity $user ): void {
+		$userId = $user->getId();
+		$record = $this->linkedAccountStore->getByUserId( $userId );
+
+		if ( $record === null ) {
+			$this->logger->warning( 'RoleConnectionSyncService: no linked account for user', [
+				'user' => $user->getName(),
+			] );
+			return;
+		}
+
+		try {
+			$tokenResponse = $this->refreshAccessTokenAndPersist( $userId, $record );
+
+			$this->roleConnectionClient->clearUserRoleConnection( $tokenResponse->getAccessToken() );
+
+			$this->linkedAccountStore->updateSyncResult( $userId, null );
+
+			$this->logger->info( 'Discord role-connection payload cleared', [
+				'user' => $user->getName(),
+			] );
+
+		} catch ( RuntimeException $e ) {
+			$error = $e->getMessage();
+			$this->linkedAccountStore->updateSyncResult( $userId, $error );
+			$this->logger->error( 'Discord role-connection clear failed', [
+				'user'      => $user->getName(),
+				'exception' => $error,
+			] );
+		}
+	}
+
+	/**
+	 * Clear role-connection payload and revoke refreshed token for full disconnect cleanup.
+	 *
+	 * Used by the disconnect button to reuse the same remote-clear logic as
+	 * account deletion while still revoking OAuth authorization.
+	 */
+	public function disconnectUser( UserIdentity $user ): void {
+		$userId = $user->getId();
+		$record = $this->linkedAccountStore->getByUserId( $userId );
+
+		if ( $record === null ) {
+			$this->logger->warning( 'RoleConnectionSyncService: no linked account for user', [
+				'user' => $user->getName(),
+			] );
+			return;
+		}
+
+		try {
+			$tokenResponse = $this->refreshAccessTokenAndPersist( $userId, $record );
+
+			$this->roleConnectionClient->clearUserRoleConnection( $tokenResponse->getAccessToken() );
+			$this->oauthClient->revokeToken( $tokenResponse->getRefreshToken() );
+
+			$this->linkedAccountStore->updateSyncResult( $userId, null );
+
+			$this->logger->info( 'Discord account remote cleanup completed', [
+				'user' => $user->getName(),
+			] );
+
+		} catch ( RuntimeException $e ) {
+			$error = $e->getMessage();
+			$this->linkedAccountStore->updateSyncResult( $userId, $error );
+			$this->logger->error( 'Discord account remote cleanup failed', [
+				'user'      => $user->getName(),
+				'exception' => $error,
+			] );
+		}
+	}
+
+	private function refreshAccessTokenAndPersist( int $userId, LinkedAccountRecord $record ): DiscordTokenResponse {
+		$refreshToken  = $this->encryptor->decrypt( $record->getEncryptedRefreshToken() );
+		$tokenResponse = $this->oauthClient->refreshToken( $refreshToken );
+
+		// Persist the possibly-rotated refresh token immediately.
+		$this->linkedAccountStore->updateToken(
+			$userId,
+			$this->encryptor->encrypt( $tokenResponse->getRefreshToken() ),
+			$record->getDiscordUsername()
+		);
+
+		return $tokenResponse;
 	}
 }

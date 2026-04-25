@@ -4,7 +4,6 @@ namespace MediaWiki\Extension\DiscordLinkedRoles\Special;
 
 use MediaWiki\Extension\DiscordLinkedRoles\Crypto\RefreshTokenEncryptor;
 use MediaWiki\Extension\DiscordLinkedRoles\Discord\DiscordOAuthClient;
-use MediaWiki\Extension\DiscordLinkedRoles\Discord\DiscordRoleConnectionClient;
 use MediaWiki\Extension\DiscordLinkedRoles\Store\LinkedAccountRecord;
 use MediaWiki\Extension\DiscordLinkedRoles\Store\LinkedAccountStore;
 use MediaWiki\Extension\DiscordLinkedRoles\Sync\RoleConnectionSyncService;
@@ -34,7 +33,6 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 		private readonly LinkedAccountStore $linkedAccountStore,
 		private readonly RefreshTokenEncryptor $encryptor,
 		private readonly DiscordOAuthClient $oauthClient,
-		private readonly DiscordRoleConnectionClient $roleConnectionClient,
 		private readonly RoleConnectionSyncService $syncService
 	) {
 		parent::__construct( 'DiscordLinkedRoles', '', /* $listed */ true );
@@ -263,23 +261,7 @@ class SpecialDiscordLinkedRoles extends SpecialPage {
 			return;
 		}
 
-		try {
-			$refreshToken  = $this->encryptor->decrypt( $record->getEncryptedRefreshToken() );
-			$tokenResponse = $this->oauthClient->refreshToken( $refreshToken );
-
-			// Clear the role-connection payload on Discord before revoking
-			$this->roleConnectionClient->clearUserRoleConnection( $tokenResponse->getAccessToken() );
-
-			// Revoke the refresh token returned by the refresh grant
-			$this->oauthClient->revokeToken( $tokenResponse->getRefreshToken() );
-
-		} catch ( RuntimeException $e ) {
-			// Remote cleanup failure is logged but must not block local cleanup
-			$this->logger->warning( 'Discord disconnect remote cleanup failed', [
-				'user'      => $user->getName(),
-				'exception' => $e->getMessage(),
-			] );
-		}
+		$this->syncService->disconnectUser( $user );
 
 		$this->linkedAccountStore->deleteByUserId( $user->getId() );
 
