@@ -4,7 +4,7 @@
 	},
 	"discordlinkedroles-extensionname": "Discord Linked Roles",
 	"discordlinkedroles-extensiondesc": "Provides Discord linked role connectivity",
-	"discordlinkedroles-specialpage-title": "Discord Linked Roles",
+	"discordlinkedroles-specialpage-title": "Connect to Discord account",
 	"discordlinkedroles-not-configured": "The Discord Linked Roles extension is not configured. Please contact the wiki administrator.",
 	"discordlinkedroles-status-connected": "Your wiki account is connected to Discord as '''$1'''.",
 	"discordlinkedroles-status-disconnected": "Your wiki account is not connected to Discord.",
